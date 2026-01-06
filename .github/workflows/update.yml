@@ -1,9 +1,10 @@
-name: Update TV Playlist
+ame: Update TV Playlist
 
 on:
   schedule:
+    # Запуск каждые 6 часов (можно менять)
     - cron: '0 */6 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Позволяет запускать вручную кнопкой
 
 jobs:
   build:
@@ -27,14 +28,12 @@ jobs:
           LOGIN: ${{ secrets.LOGIN }}
           PASSWORD: ${{ secrets.PASSWORD }}
         run: python grabber.py
-      
-      # ИСПРАВЛЕННЫЙ ШАГ: Загрузка в Gist с использованием актуального действия
-      - name: Deploy to Gist
-        uses: exuanbo/actions-deploy-gist@v1
-        with:
-          # Название параметра "token" - это то, что требует действие exuanbo
-          token: ${{ secrets.GIST_TOKEN }} 
-          gist_id: '11e73ac25d6d0d1fa234122ad0278cd8' 
-          file_path: 'playlist_8f2d9k1l.m3u'
-          gist_description: 'Автообновление плейлиста'
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "Playlist Bot"
+          git config --global user.email "bot@github.com"
+          git add playlist_8f2d9k1l.m3u
+          git commit -m "Update playlist [$(date)]" || exit 0
+          git push
 
