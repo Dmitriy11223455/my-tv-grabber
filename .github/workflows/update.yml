@@ -1,4 +1,4 @@
-ame: Update TV Playlist
+name: Update TV Playlist
 
 on:
   schedule:
