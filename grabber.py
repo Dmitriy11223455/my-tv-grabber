@@ -14,7 +14,7 @@ CHANNELS = {
     "Рен ТВ":"https://smotrettv.com/tv/public/316-ren-tv.html"
 }
 
-STREAM_BASE_URL = "server.smotrettv.com{channel_id}.m3u8?token={token}"
+STREAM_BASE_URL = "https://server.smotrettv.com/{channel_id}.m3u8?token={token}"
 
 async def run():
     async with async_playwright() as p:
