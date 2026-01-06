@@ -32,7 +32,9 @@ jobs:
       - name: Deploy to Gist
         uses: exuanbo/actions-deploy-gist@v1
         with:
+          # Название параметра "token" - это то, что требует действие exuanbo
           token: ${{ secrets.GIST_TOKEN }} 
           gist_id: '11e73ac25d6d0d1fa234122ad0278cd8' 
           file_path: 'playlist_8f2d9k1l.m3u'
           gist_description: 'Автообновление плейлиста'
+
