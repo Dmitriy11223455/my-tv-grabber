@@ -33,7 +33,7 @@ jobs:
         uses: ejhayfield/gist-sync-action@v1
         with:
           # ID вашего Gist (смотрите ниже, как получить)
-          gist_id: 'СЮДА_ВСТАВЬТЕ_ID_ВАШЕГО_GIST' 
+          gist_id: '11e73ac25d6d0d1fa234122ad0278cd8' 
           gist_token: ${{ secrets.GIST_TOKEN }}
           file: 'playlist_8f2d9k1l.m3u'
           commit_message: "Автообновление плейлиста"
