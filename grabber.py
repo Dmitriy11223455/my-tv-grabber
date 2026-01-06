@@ -23,7 +23,7 @@ async def run():
         page = await context.new_page()
 
         # Авторизация
-        await page.goto("smotrettv.com/login")
+        await page.goto("smotrettv.com")
         await page.fill('input[name="email"]', os.getenv('LOGIN'))
         await page.fill('input[name="password"]', os.getenv('PASSWORD'))
         await page.click('button[type="submit"]')
