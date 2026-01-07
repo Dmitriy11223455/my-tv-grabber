@@ -1,25 +1,25 @@
 #EXTM3U
 #EXTINF:-1, Первый канал
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
-https://server.smotrettv.com/1003.m3u8?token=1767775549_6b1c43f66ca6963e8118ab56f6a38576ce26865d7d46f671a227c1a7d9c68faf
+https://server.smotrettv.com/1003.m3u8?token=1767776249_91c85094dbc183c9c0b4ed1ce5a77244c8efb6893e0a0dfa183b2222d9ddb816
 #EXTINF:-1, Россия 1
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
-https://server.smotrettv.com/784.m3u8?token=1767775551_f1a21e498cda9274aae856822e2ea971dddf78558bcc83583ced675ab094e9b3
+https://server.smotrettv.com/784.m3u8?token=1767776251_6b769f8b8788a7fe1994ab856b4f76d0d0b55324a120ddee785f406c1548ca91
 #EXTINF:-1, Звезда
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
-https://server.smotrettv.com/310.m3u8?token=1767775551_f1a21e498cda9274aae856822e2ea971dddf78558bcc83583ced675ab094e9b3
+https://server.smotrettv.com/310.m3u8?token=1767776251_6b769f8b8788a7fe1994ab856b4f76d0d0b55324a120ddee785f406c1548ca91
 #EXTINF:-1, ТНТ
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
-https://server.smotrettv.com/329.m3u8?token=1767775552_1d0f7da3137fd5b8dc6e8976a343ac38dbd247856a582afac56b4478a59dfd67
+https://server.smotrettv.com/329.m3u8?token=1767776252_5b22d860efc9e5c37d26f5b4956bfddb38474aa53f59b17127706786987a128a
 #EXTINF:-1, Россия 24
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
-https://server.smotrettv.com/217.m3u8?token=1767775552_1d0f7da3137fd5b8dc6e8976a343ac38dbd247856a582afac56b4478a59dfd67
+https://server.smotrettv.com/217.m3u8?token=bca94d86c2eaae9650deed47ce54720551492b33%3A1767776188
 #EXTINF:-1, СТС
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
-https://server.smotrettv.com/783.m3u8?token=1767775554_0644998ed85fd36d2e1ef0a0d77e0083c1043b272e41bd1c54e8e157b3fabd32
+https://server.smotrettv.com/783.m3u8?token=1767776254_43c0112fc42145fd1966c6822eaab356ffdab09f0a12aa11293a10115d9402f2
 #EXTINF:-1, НТВ
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
-https://server.smotrettv.com/6.m3u8?token=82c53ef99a67d153fac9ce6d0b393379947a6a4b%3A1767775487
+https://server.smotrettv.com/6.m3u8?token=1767776255_f458826e234b17413f61a008d234da2a4aaff7e45f7e3d9c24c93dab437f84b7
 #EXTINF:-1, Рен ТВ
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
-https://server.smotrettv.com/316.m3u8?token=1767775554_277f9018e1bcdc76b9d4d82d00a78fee8880f1b669822b4561fd0f77f65fbc90
+https://server.smotrettv.com/316.m3u8?token=1767776256_0a95bdc7c3da5bf819ebfa46da0128dce2a6737d7c5f680e12a7dc786cedea59
