@@ -18,7 +18,6 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 
 async def run():
     async with async_playwright() as p:
-        # Запускаем с опцией, которая лучше обходит детекторы ботов (только в Linux)
         browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
         context = await browser.new_context(user_agent=UA, viewport={'width': 1280, 'height': 720})
         page = await context.new_page()
@@ -26,34 +25,34 @@ async def run():
 
         print("Авторизация...")
         try:
-            await page.goto("https://smotrettv.com/login", wait_until="domcontentloaded")
+            await page.goto("smotrettv.com", wait_until="domcontentloaded")
             
-            # --- ОТЛАДКА ---
-            # Делаем скриншот, чтобы увидеть, что происходит на странице
-            await page.screenshot(path="debug_login_page.png")
-            # --- /ОТЛАДКА ---
-
-            # Попробуйте этот альтернативный селектор, если 'input[name="email"]' не работает
-            email_selector = 'input[name="email"]'
-            if not await page.is_visible(email_selector):
-                print(f"Селектор {email_selector} не виден, пробуем альтернативы.")
-                email_selector = 'input[type="email"]' # Поиск по типу
-
-            await page.fill(email_selector, os.getenv('LOGIN', 'your_login'))
+            # Новый, более надежный способ ожидания элемента:
+            await page.wait_for_selector('input[name="email"]', state='visible', timeout=30000)
+            
+            await page.fill('input[name="email"]', os.getenv('LOGIN', 'your_login'))
             await page.fill('input[name="password"]', os.getenv('PASSWORD', 'your_password'))
             await page.click('button[type="submit"]')
             await page.wait_for_load_state("networkidle")
-        except Exception as e:
-            print(f"Предупреждение при логине: {e}")
-
-        playlist = "#EXTM3U\n"
+            print("Авторизация успешна (предположительно).")
         
+        except Exception as e:
+            print(f"Ошибка при логине: {e}")
+            # --- ОТЛАДКА ---
+            # Принудительно делаем скриншот, даже если была ошибка
+            await page.screenshot(path="debug_login_error_final.png")
+            print("Скриншот debug_login_error_final.png создан.")
+            # --- /ОТЛАДКА ---
+            # Мы не выходим из скрипта, чтобы создать пустой плейлист и сохранить скриншот через артефакты
+            
+        playlist = "#EXTM3U\n"
+        # ... (остальной код остается без изменений) ...
+
         for name, url in CHANNELS.items():
             print(f"Обработка: {name}")
             stream_url_container = {"url": None}
 
             async def intercept_request(request):
-                # Ищем реальный m3u8 с токеном в трафике
                 if ".m3u8" in request.url and "token=" in request.url:
                     stream_url_container["url"] = request.url
 
@@ -61,14 +60,11 @@ async def run():
             
             try:
                 await page.goto(url, wait_until="commit")
-                
-                # Имитируем клик по плееру, чтобы вызвать запрос потока
                 try:
                     await page.click(".vjs-big-play-button", timeout=5000)
                 except:
                     pass
 
-                # Ждем перехвата ссылки 15 секунд
                 for _ in range(15):
                     if stream_url_container["url"]:
                         break
@@ -76,12 +72,10 @@ async def run():
                 
                 if stream_url_container["url"]:
                     stream = stream_url_container["url"]
-                    # Добавляем необходимые заголовки прямо в плейлист для плеера
                     playlist += f'#EXTINF:-1, {name}\n'
                     playlist += f'#EXTVLCOPT:http-user-agent={UA}\n'
-                    playlist += f'#EXTVLCOPT:http-referrer=https://smotrettv.com/\n'
-                    # Правильный формат для OTT/TiviMate
-                    playlist += f'{stream}|Referer=smotrettv.com{UA}\n'
+                    playlist += f'#EXTVLCOPT:http-referrer=smotrettv.com\n'
+                    playlist += f'{stream}|Referer=smotrettv.com&User-Agent={UA}\n'
                     print(f"Успех: {name}")
                 else:
                     print(f"Токен для {name} не найден")
@@ -95,7 +89,6 @@ async def run():
             f.write(playlist)
         
         await browser.close()
-        # ↓↓↓ ИСПРАВЛЕННЫЙ ОТСТУП ЗДЕСЬ ↓↓↓
         print("\nГотово. Файл: playlist_8f2d9k1l.m3u")
 
 if __name__ == "__main__":
