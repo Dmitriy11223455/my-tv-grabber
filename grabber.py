@@ -80,7 +80,7 @@ async def run():
                     playlist += f'#EXTINF:-1, {name}\n'
                     playlist += f'#EXTVLCOPT:http-user-agent={UA}\n'
                     playlist += f'#EXTVLCOPT:http-referrer=https://smotrettv.com/\n'
-                    # ИСПРАВЛЕНО: Правильный формат для OTT/TiviMate
+                    # Правильный формат для OTT/TiviMate
                     playlist += f'{stream}|Referer=smotrettv.com{UA}\n'
                     print(f"Успех: {name}")
                 else:
@@ -95,10 +95,7 @@ async def run():
             f.write(playlist)
         
         await browser.close()
-        print("\nГотово. Файл: playlist_8f2d9k1l.m3u")
-
-if __name__ == "__main__":
-    asyncio.run(run())
+        # ↓↓↓ ИСПРАВЛЕННЫЙ ОТСТУП ЗДЕСЬ ↓↓↓
         print("\nГотово. Файл: playlist_8f2d9k1l.m3u")
 
 if __name__ == "__main__":
