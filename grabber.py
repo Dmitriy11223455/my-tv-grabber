@@ -16,7 +16,7 @@ CHANNELS = {
 }
 
 # Шаблон ссылки сайта (может меняться со временем)
-STREAM_BASE_URL = "server.smotrettv.com{channel_id}.m3u8?token={token}"
+STREAM_BASE_URL = "https://server.smotrettv.com/{channel_id}.m3u8?token={token}"
 
 async def get_tokens_and_make_playlist():
     async with async_playwright() as p:
@@ -54,7 +54,7 @@ async def get_tokens_and_make_playlist():
             
             try:
                 # Переходим на страницу канала для захвата токена
-                await page.goto(url, wait_until="networkidle", timeout=30000)
+                await page.goto(url, wait_until="networkidle", timeout=60000)
                 await asyncio.sleep(8) 
 
                 if current_token:
