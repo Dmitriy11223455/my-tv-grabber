@@ -1,1 +1,25 @@
 #EXTM3U
+#EXTINF:-1, Первый канал
+#EXTVLCOPT:http-user-agent=Mozilla/5.0
+https://server.smotrettv.com/1003.m3u8?token=1767769448_610a9f076837afeffd0e9796cf689e495db5988985ba9ee2d8dd01ef22c5b4e6
+#EXTINF:-1, Россия 1
+#EXTVLCOPT:http-user-agent=Mozilla/5.0
+https://server.smotrettv.com/784.m3u8?token=1767769450_befc6e71564e45144467abb3d680ee63e3b944ff09e7cddaa21da9b419083c5c
+#EXTINF:-1, Звезда
+#EXTVLCOPT:http-user-agent=Mozilla/5.0
+https://server.smotrettv.com/310.m3u8?token=6e709772db4ad075be7374d364fce92bda6f2aa1%3A1767769386
+#EXTINF:-1, ТНТ
+#EXTVLCOPT:http-user-agent=Mozilla/5.0
+https://server.smotrettv.com/329.m3u8?token=1767769451_06c2b67d24bfe9a8695f03d0265bc3d637398024f6d38eee614512d7918dd51c
+#EXTINF:-1, Россия 24
+#EXTVLCOPT:http-user-agent=Mozilla/5.0
+https://server.smotrettv.com/217.m3u8?token=6e709772db4ad075be7374d364fce92bda6f2aa1%3A1767769386
+#EXTINF:-1, СТС
+#EXTVLCOPT:http-user-agent=Mozilla/5.0
+https://server.smotrettv.com/783.m3u8?token=6e709772db4ad075be7374d364fce92bda6f2aa1%3A1767769386
+#EXTINF:-1, НТВ
+#EXTVLCOPT:http-user-agent=Mozilla/5.0
+https://server.smotrettv.com/6.m3u8?token=1767769454_37994520cf3b7260407ef6c2b6a8d36bf7f3e4361d1e283bbb4ad0638c7d8f50
+#EXTINF:-1, Рен ТВ
+#EXTVLCOPT:http-user-agent=Mozilla/5.0
+https://server.smotrettv.com/316.m3u8?token=1767769454_37994520cf3b7260407ef6c2b6a8d36bf7f3e4361d1e283bbb4ad0638c7d8f50
