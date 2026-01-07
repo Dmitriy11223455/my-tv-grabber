@@ -1,8 +1,8 @@
 import asyncio
 import os
-import re
 from playwright.async_api import async_playwright
 
+# !!! ВАЖНО ИСПРАВИТЬ: Укажите полные ссылки на страницы каналов !!!
 CHANNELS = {
     "Первый канал": "https://smotrettv.com/tv/public/1003-pervyj-kanal.html",
     "Россия 1": "https://smotrettv.com/tv/public/784-rossija-1.html",
@@ -12,84 +12,75 @@ CHANNELS = {
     "СТС": "https://smotrettv.com/tv/entertainment/783-sts.html",
     "НТВ": "https://smotrettv.com/tv/public/6-ntv.html",
     "Рен ТВ": "https://smotrettv.com/tv/public/316-ren-tv.html"
+
 }
 
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+# Шаблон ссылки сайта (может меняться со временем)
+STREAM_BASE_URL = "server.smotrettv.com{channel_id}.m3u8?token={token}"
 
-async def run():
+async def get_tokens_and_make_playlist():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
-        context = await browser.new_context(user_agent=UA, viewport={'width': 1280, 'height': 720})
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         page = await context.new_page()
-        page.set_default_timeout(60000)
 
-        print("Авторизация...")
+        # Получение данных авторизации из переменных окружения
+        login = os.getenv('LOGIN', 'ВАШ_ЛОГИН')
+        password = os.getenv('PASSWORD', 'ВАШ_ПАРОЛЬ')
+
         try:
-            await page.goto("smotrettv.com", wait_until="domcontentloaded")
-            
-            # Новый, более надежный способ ожидания элемента:
-            await page.wait_for_selector('input[name="email"]', state='visible', timeout=30000)
-            
-            await page.fill('input[name="email"]', os.getenv('LOGIN', 'your_login'))
-            await page.fill('input[name="password"]', os.getenv('PASSWORD', 'your_password'))
+            await page.goto("smotrettv.com") # Страница входа
+            await page.fill('input[name="email"]', login)
+            await page.fill('input[name="password"]', password)
             await page.click('button[type="submit"]')
-            await page.wait_for_load_state("networkidle")
-            print("Авторизация успешна (предположительно).")
-        
+            await asyncio.sleep(5)
+            print("Авторизация прошла успешно.")
         except Exception as e:
-            print(f"Ошибка при логине: {e}")
-            # --- ОТЛАДКА ---
-            # Принудительно делаем скриншот, даже если была ошибка
-            await page.screenshot(path="debug_login_error_final.png")
-            print("Скриншот debug_login_error_final.png создан.")
-            # --- /ОТЛАДКА ---
-            # Мы не выходим из скрипта, чтобы создать пустой плейлист и сохранить скриншот через артефакты
-            
-        playlist = "#EXTM3U\n"
-        # ... (остальной код остается без изменений) ...
+            print(f"Ошибка авторизации: {e}")
 
+        playlist_data = "#EXTM3U\n"
+        
         for name, url in CHANNELS.items():
-            print(f"Обработка: {name}")
-            stream_url_container = {"url": None}
+            print(f"Обработка: {name}...")
+            current_token = None
 
-            async def intercept_request(request):
-                if ".m3u8" in request.url and "token=" in request.url:
-                    stream_url_container["url"] = request.url
+            def handle_request(request):
+                nonlocal current_token
+                if "token=" in request.url and ".m3u8" in request.url:
+                     # Пытаемся извлечь только токен из URL
+                    current_token = request.url.split("token=")[1].split("&")[0]
 
-            page.on("request", intercept_request)
+            page.on("request", handle_request)
             
             try:
-                await page.goto(url, wait_until="commit")
-                try:
-                    await page.click(".vjs-big-play-button", timeout=5000)
-                except:
-                    pass
+                # Переходим на страницу канала для захвата токена
+                await page.goto(url, wait_until="networkidle", timeout=30000)
+                await asyncio.sleep(8) 
 
-                for _ in range(15):
-                    if stream_url_container["url"]:
-                        break
-                    await asyncio.sleep(1)
-                
-                if stream_url_container["url"]:
-                    stream = stream_url_container["url"]
-                    playlist += f'#EXTINF:-1, {name}\n'
-                    playlist += f'#EXTVLCOPT:http-user-agent={UA}\n'
-                    playlist += f'#EXTVLCOPT:http-referrer=smotrettv.com\n'
-                    playlist += f'{stream}|Referer=smotrettv.com&User-Agent={UA}\n'
-                    print(f"Успех: {name}")
+                if current_token:
+                    # Извлекаем ID канала из URL страницы
+                    channel_id = url.split("-")[-2].split("/")[-1]
+                    stream_url = STREAM_BASE_URL.format(channel_id=channel_id, token=current_token)
+                    
+                    # Формат для плееров, включая заголовки для DRM/User-Agent
+                    playlist_data += f'#EXTINF:-1, {name}\n'
+                    playlist_data += f'#KODIPROP:inputstream.adaptive.license_type=widevine\n'
+                    playlist_data += f'#EXTVLCOPT:http-user-agent=Mozilla/5.0\n'
+                    playlist_data += f'{stream_url}\n'
+                    print(f"  > Токен получен.")
                 else:
-                    print(f"Токен для {name} не найден")
-            
-            except Exception as e:
-                print(f"Ошибка: {e}")
-            finally:
-                page.remove_listener("request", intercept_request)
+                    print(f"  > Токен не найден для {name}.")
 
-        with open("playlist_8f2d9k1l.m3u", "w", encoding="utf-8") as f:
-            f.write(playlist)
+            except Exception as e:
+                print(f"Ошибка на {name}: {e}")
+
+        # Сохраняем результат
+        with open("playlist.m3u", "w", encoding="utf-8") as f:
+            f.write(playlist_data)
         
+        print("\nПлейлист для DRM-play готов.")
         await browser.close()
-        print("\nГотово. Файл: playlist_8f2d9k1l.m3u")
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    asyncio.run(get_tokens_and_make_playlist())
+
