@@ -14,80 +14,75 @@ CHANNELS = {
     "Рен ТВ": "https://smotrettv.com/tv/public/316-ren-tv.html"
 }
 
-STREAM_BASE_URL = "https://server.smotrettv.com/{channel_id}.m3u8?token={token}"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 async def run():
     async with async_playwright() as p:
-        # Запуск с игнорированием ошибок HTTPS
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            viewport={'width': 1280, 'height': 720}
-        )
+        context = await browser.new_context(user_agent=UA, viewport={'width': 1280, 'height': 720})
         page = await context.new_page()
-        
-        # Устанавливаем таймаут по умолчанию 60 секунд
         page.set_default_timeout(60000)
 
-        # Авторизация
         print("Авторизация...")
         try:
             await page.goto("https://smotrettv.com/login", wait_until="domcontentloaded")
             await page.fill('input[name="email"]', os.getenv('LOGIN', 'your_login'))
             await page.fill('input[name="password"]', os.getenv('PASSWORD', 'your_password'))
-            await asyncio.gather(
-                page.wait_for_navigation(wait_until="networkidle"),
-                page.click('button[type="submit"]')
-            )
+            await page.click('button[type="submit"]')
+            await page.wait_for_load_state("networkidle")
         except Exception as e:
             print(f"Предупреждение при логине: {e}")
 
         playlist = "#EXTM3U\n"
         
         for name, url in CHANNELS.items():
-            print(f"Запрос для: {name}")
-            token_container = {"value": None}
+            print(f"Обработка: {name}")
+            stream_url_container = {"url": None}
 
             async def intercept_request(request):
-                if "token=" in request.url:
-                    match = re.search(r'token=([^&]+)', request.url)
-                    if match:
-                        token_container["value"] = match.group(1)
+                # Ищем реальный m3u8 с токеном в трафике
+                if ".m3u8" in request.url and "token=" in request.url:
+                    stream_url_container["url"] = request.url
 
             page.on("request", intercept_request)
             
             try:
-                channel_id = url.split("/")[-1].split("-")[0]
+                await page.goto(url, wait_until="commit")
                 
-                # Переходим на страницу канала, игнорируя таймаут загрузки тяжелых элементов
+                # Имитируем клик по плееру, чтобы вызвать запрос потока
                 try:
-                    await page.goto(url, wait_until="commit", timeout=60000)
-                except Exception:
-                    pass # Нам важен только поток данных, а не полная отрисовка
-                
-                # Ждем появления токена в трафике
-                for _ in range(20):
-                    if token_container["value"]:
+                    await page.click(".vjs-big-play-button", timeout=5000)
+                except:
+                    pass
+
+                # Ждем перехвата ссылки 15 секунд
+                for _ in range(15):
+                    if stream_url_container["url"]:
                         break
                     await asyncio.sleep(1)
                 
-                if token_container["value"]:
-                    stream = STREAM_BASE_URL.format(channel_id=channel_id, token=token_container["value"])
-                    playlist += f'#EXTINF:-1, {name}\n#EXTVLCOPT:http-user-agent=Mozilla/5.0\n{stream}\n'
-                    print(f"Успешно получен: {name}")
+                if stream_url_container["url"]:
+                    stream = stream_url_container["url"]
+                    # Добавляем необходимые заголовки прямо в плейлист для плеера
+                    playlist += f'#EXTINF:-1, {name}\n'
+                    playlist += f'#EXTVLCOPT:http-user-agent={UA}\n'
+                    playlist += f'#EXTVLCOPT:http-referrer=https://smotrettv.com/\n'
+                    # Для некоторых плееров (OTT Navigator / TiviMate) формат записи заголовка в ссылке:
+                    playlist += f'{stream}|Referer=smotrettv.com{UA}\n'
+                    print(f"Успех: {name}")
                 else:
-                    print(f"Токен для {name} не перехвачен")
+                    print(f"Токен для {name} не найден")
             
             except Exception as e:
-                print(f"Ошибка на канале {name}: {e}")
+                print(f"Ошибка: {e}")
             finally:
                 page.remove_listener("request", intercept_request)
 
         with open("playlist_8f2d9k1l.m3u", "w", encoding="utf-8") as f:
             f.write(playlist)
         
-        print("\nРабота завершена. Файл создан.")
         await browser.close()
+        print("\nГотово. Файл: playlist_8f2d9k1l.m3u")
 
 if __name__ == "__main__":
     asyncio.run(run())
