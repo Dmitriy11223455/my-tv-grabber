@@ -1,42 +1,34 @@
-name: Update TV Playlist
 
+name: Update Playlist
 on:
   schedule:
-    # Запуск каждые 6 часов
-    - cron: '0 */6 * * *'
-  workflow_dispatch: # Позволяет запускать вручную
+    - cron: '0 */6 * * *' # Запуск каждые 6 часов
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Set up Python
-        # ИСПРАВЛЕНИЕ В ЭТОЙ СТРОКЕ:
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-
       - name: Install dependencies
         run: |
           pip install playwright
-          # Установка только системных зависимостей для chromium (экономит время)
-          playwright install --with-deps chromium
-
-      - name: Run grabber
-        env:
-          LOGIN: ${{ secrets.LOGIN }}
-          PASSWORD: ${{ secrets.PASSWORD }}
+          playwright install chromium
+      - name: Run script
         run: python grabber.py
-
+        env:
+          LOGIN: ${{ secrets.SMOTRET_LOGIN }}
+          PASSWORD: ${{ secrets.SMOTRET_PASSWORD }}
       - name: Commit and Push
         run: |
-          git config --global user.name "Playlist Bot"
+          git config --global user.name "Bot"
           git config --global user.email "bot@github.com"
-          git add playlist_8f2d9k1l.m3u
-          # Проверка на изменения, чтобы не сыпать ошибками если плейлист не изменился
-          git commit -m "Update playlist [$(date)]" || exit 0
+          git add playlist.m3u
+          git commit -m "Update tokens" || exit 0
+          # Убедитесь, что у вас настроен PAT для пуша
           git push
 
