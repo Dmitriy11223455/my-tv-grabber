@@ -2,33 +2,38 @@
 name: Update Playlist
 on:
   schedule:
-    - cron: '0 */6 * * *' # Запуск каждые 6 часов
+    - cron: '0 */6 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write # Обязательно для пуша изменений
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # v5 более актуальна для 2026
         with:
           python-version: '3.10'
+          
       - name: Install dependencies
         run: |
           pip install playwright
-          playwright install chromium
+          playwright install --with-deps chromium
+          
       - name: Run script
         run: python grabber.py
         env:
           LOGIN: ${{ secrets.SMOTRET_LOGIN }}
           PASSWORD: ${{ secrets.SMOTRET_PASSWORD }}
+          
       - name: Commit and Push
         run: |
-          git config --global user.name "Bot"
+          git config --global user.name "Playlist Bot"
           git config --global user.email "bot@github.com"
           git add playlist.m3u
-          git commit -m "Update tokens" || exit 0
-          # Убедитесь, что у вас настроен PAT для пуша
+          git commit -m "Update playlist $(date)" || exit 0
           git push
-
