@@ -18,7 +18,8 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 
 async def run():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        # Запускаем с опцией, которая лучше обходит детекторы ботов (только в Linux)
+        browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
         context = await browser.new_context(user_agent=UA, viewport={'width': 1280, 'height': 720})
         page = await context.new_page()
         page.set_default_timeout(60000)
@@ -26,7 +27,19 @@ async def run():
         print("Авторизация...")
         try:
             await page.goto("https://smotrettv.com/login", wait_until="domcontentloaded")
-            await page.fill('input[name="email"]', os.getenv('LOGIN', 'your_login'))
+            
+            # --- ОТЛАДКА ---
+            # Делаем скриншот, чтобы увидеть, что происходит на странице
+            await page.screenshot(path="debug_login_page.png")
+            # --- /ОТЛАДКА ---
+
+            # Попробуйте этот альтернативный селектор, если 'input[name="email"]' не работает
+            email_selector = 'input[name="email"]'
+            if not await page.is_visible(email_selector):
+                print(f"Селектор {email_selector} не виден, пробуем альтернативы.")
+                email_selector = 'input[type="email"]' # Поиск по типу
+
+            await page.fill(email_selector, os.getenv('LOGIN', 'your_login'))
             await page.fill('input[name="password"]', os.getenv('PASSWORD', 'your_password'))
             await page.click('button[type="submit"]')
             await page.wait_for_load_state("networkidle")
@@ -67,7 +80,7 @@ async def run():
                     playlist += f'#EXTINF:-1, {name}\n'
                     playlist += f'#EXTVLCOPT:http-user-agent={UA}\n'
                     playlist += f'#EXTVLCOPT:http-referrer=https://smotrettv.com/\n'
-                    # Для некоторых плееров (OTT Navigator / TiviMate) формат записи заголовка в ссылке:
+                    # ИСПРАВЛЕНО: Правильный формат для OTT/TiviMate
                     playlist += f'{stream}|Referer=smotrettv.com{UA}\n'
                     print(f"Успех: {name}")
                 else:
@@ -82,6 +95,10 @@ async def run():
             f.write(playlist)
         
         await browser.close()
+        print("\nГотово. Файл: playlist_8f2d9k1l.m3u")
+
+if __name__ == "__main__":
+    asyncio.run(run())
         print("\nГотово. Файл: playlist_8f2d9k1l.m3u")
 
 if __name__ == "__main__":
