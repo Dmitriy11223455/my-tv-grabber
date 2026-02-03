@@ -5,29 +5,33 @@ from playwright.async_api import async_playwright
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
 async def get_all_channels_from_site(page):
-    """Собирает только реальные каналы, игнорируя рубрики меню"""
+    """Улучшенный сборщик каналов с глубоким поиском ссылок"""
     print(">>> Сбор списка каналов с главной страницы...")
     try:
-        await page.goto("https://smotrettv.com", wait_until="domcontentloaded", timeout=60000)
-        await asyncio.sleep(3)
+        await page.goto("https://smotrettv.com", wait_until="networkidle", timeout=60000)
+        
+        # Прокрутка вниз, чтобы подгрузились все ленивые элементы
+        await page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
+        await asyncio.sleep(2)
         
         found_channels = {}
-        # Селектор ищет ссылки внутри карточек каналов
-        links = await page.query_selector_all("a.channel-item, .channels-list a")
+        # Ищем все ссылки, которые ведут на страницы каналов
+        # Фильтруем по характерным путям сайта
+        links = await page.query_selector_all("a[href*='/public/'], a[href*='/entertainment/'], a[href*='/news/'], a[href*='/kids/'], a[href*='/movies/']")
         
         for link in links:
+            name = await link.inner_text()
             url = await link.get_attribute("href")
-            name_elem = await link.query_selector(".channel-name, span, b")
-            name = await name_elem.inner_text() if name_elem else ""
             
-            if url and name.strip() and ("/public/" in url or "/entertainment/" in url or "/news/" in url):
+            if url and len(name.strip()) > 1:
                 full_url = url if url.startswith("http") else f"https://smotrettv.com{url}"
-                found_channels[name.strip()] = full_url
-                
-        print(f"[OK] Найдено каналов для обработки: {len(found_channels)}")
+                clean_name = name.strip().split('\n')[0] # Берем только первую строку имени
+                if full_url not in found_channels.values():
+                    found_channels[clean_name] = full_url
+            
         return found_channels
     except Exception as e:
-        print(f"[!] Ошибка при сканировании главной: {e}")
+        print(f"[!] Ошибка при сборе списка: {e}")
         return {}
 
 async def get_tokens_and_make_playlist():
@@ -35,89 +39,66 @@ async def get_tokens_and_make_playlist():
 
     async with async_playwright() as p:
         print(">>> Запуск браузера...")
-        browser = await p.chromium.launch(headless=True, args=[
-            "--disable-blink-features=AutomationControlled",
-            "--no-sandbox"
-        ])
-        
-        # Создаем контекст с подменой User-Agent
+        browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
         context = await browser.new_context(user_agent=USER_AGENT)
         page = await context.new_page()
 
-        # Получаем актуальный список каналов
+        # Получаем каналы
         CHANNELS = await get_all_channels_from_site(page)
+        
+        if not CHANNELS:
+            print("[!] Список каналов пуст. Проверьте соединение или структуру сайта.")
+            await browser.close()
+            return
+
+        print(f"[OK] Найдено уникальных каналов: {len(CHANNELS)}")
 
         for name, channel_url in CHANNELS.items():
-            print(f"[*] Граббинг: {name}...")
+            print(f"[*] Обработка: {name}...")
             current_stream_url = None
 
-            # Обработчик сетевых запросов
             async def handle_request(request):
                 nonlocal current_stream_url
-                u = request.url
-                # Ищем m3u8 с токенами или ссылками на медиавитрину
-                if ".m3u8" in u and ("token=" in u or "mediavitrina" in u or "index" in u):
+                url = request.url
+                if ".m3u8" in url and ("token=" in url or "mediavitrina" in url or "cache" in url):
                     if not current_stream_url:
-                        current_stream_url = u
+                        current_stream_url = url
 
-            page.on("request", handle_request)
+            context.on("request", handle_request)
             
             try:
-                # Переход на страницу канала
-                await page.goto(channel_url, wait_until="domcontentloaded", timeout=60000)
+                await page.goto(channel_url, wait_until="domcontentloaded", timeout=40000)
+                await asyncio.sleep(6) # Ждем плеер
                 
-                # Ждем появления плеера и пытаемся его "активировать"
-                await asyncio.sleep(8) 
+                # Кликаем в центр, где обычно кнопка Play
+                await page.mouse.click(640, 400)
                 
-                # Клик по центру страницы (активация плеера)
-                await page.mouse.click(640, 360)
-                
-                # Пробуем нажать во всех фреймах (плеер часто в iframe)
-                for frame in page.frames:
-                    try:
-                        await frame.click("body", timeout=1000)
-                    except:
-                        continue
-
-                # Ожидание ссылки до 15 секунд
-                for _ in range(15):
+                for _ in range(12):
                     if current_stream_url: break
                     await asyncio.sleep(1)
 
                 if current_stream_url:
                     playlist_streams.append((name, current_stream_url))
-                    print(f"   [OK] Ссылка получена")
+                    print(f"   [OK] Поток найден")
                 else:
-                    # Попытка через клавиатуру
-                    await page.keyboard.press("Space")
-                    await asyncio.sleep(4)
-                    if current_stream_url:
-                        playlist_streams.append((name, current_stream_url))
-                        print(f"   [OK] Ссылка получена (Space)")
-                    else:
-                        print(f"   [!] Поток не найден")
+                    print(f"   [ ] Поток не найден")
 
             except Exception as e:
-                print(f"   [!] Ошибка на {name}: {e}")
+                print(f"   [!] Ошибка: {e}")
 
-            page.remove_listener("request", handle_request)
-            # Рандомная пауза, чтобы не забанили
-            await asyncio.sleep(random.uniform(3, 5))
+            context.remove_listener("request", handle_request)
+            await asyncio.sleep(random.uniform(1, 2))
 
-        # Сохранение в файл
         if playlist_streams:
-            filename = "smotrettv_full.m3u"
-            with open(filename, "w", encoding="utf-8") as f:
+            with open("auto_playlist.m3u", "w", encoding="utf-8") as f:
                 f.write("#EXTM3U\n")
-                for n, l in playlist_streams: 
-                    f.write(f'#EXTINF:-1, {n}\n{l}\n')
-            print(f"\n>>> Готово! Собрано каналов: {len(playlist_streams)}")
-            print(f"Файл сохранен как: {filename}")
-        else:
-            print("\n[!] Не удалось поймать ни одного потока.")
+                for name, link in playlist_streams: 
+                    f.write(f'#EXTINF:-1, {name}\n{link}\n')
+            print(f"\n>>> Успех! Создан файл auto_playlist.m3u ({len(playlist_streams)} шт.)")
         
         await browser.close()
 
 if __name__ == "__main__":
     asyncio.run(get_tokens_and_make_playlist())
+
 
