@@ -1,94 +1,111 @@
 import asyncio
-import os
+import random
 from playwright.async_api import async_playwright
 
-# Словарь: Название -> (URL страницы, ID канала для формулы)
-CHANNELS = {
-    "Первый канал": ("https://smotrettv.com/tv/public/1003-pervyj-kanal.html", "1003"),
-    "Россия 1": ("https://smotrettv.com/tv/public/784-rossija-1.html", "784"),
-    "Звезда": ("https://smotrettv.com/tv/public/310-zvezda.html", "310"),
-    "ТНТ": ("https://smotrettv.com/tv/entertainment/329-tnt.html", "329"),
-    "Россия 24": ("https://smotrettv.com/tv/news/217-rossija-24.html", "217"),
-    "СТС": ("https://smotrettv.com/tv/entertainment/783-sts.html", "783"),
-    "НТВ": ("https://smotrettv.com/tv/public/6-ntv.html", "6"),
-    "Рен ТВ": ("https://smotrettv.com/tv/public/316-ren-tv.html", "316")
-}
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
-# Формула ссылки (актуальна на 2026 год)
-STREAM_FORMULA = "https://server.smotrettv.com/{channel_id}.m3u8?token={token}"
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
-
-async def grab_token(context, name, page_url, channel_id):
-    page = await context.new_page()
-    # Отключаем медиа для мгновенной загрузки
-    await page.route("**/*.{png,jpg,jpeg,gif,svg,css,woff2}", lambda route: route.abort())
+async def get_all_channels_from_site(page):
+    """Автоматически собирает все ссылки на каналы с главной страницы"""
+    print(">>> Сбор списка всех каналов...")
+    await page.goto("https://smotrettv.com", wait_until="domcontentloaded")
     
-    token = None
-
-    def handle_request(request):
-        nonlocal token
-        # Ищем токен в любом m3u8 запросе на странице
-        if "token=" in request.url and ".m3u8" in request.url:
-            try:
-                # Извлекаем токен из параметров URL
-                token = request.url.split("token=")[1].split("&")[0]
-            except:
-                pass
-
-    page.on("request", handle_request)
+    # Собираем ссылки из разных категорий
+    found_channels = {}
+    # Селектор ищет ссылки в сетке каналов
+    links = await page.query_selector_all("a.channel-item, .channels-list a, a[href*='/public/'], a[href*='/entertainment/'], a[href*='/news/']")
     
-    try:
-        print(f"[*] Получаю токен для: {name}")
-        await page.goto(page_url, wait_until="domcontentloaded", timeout=45000)
-        
-        # Ждем появления токена (обычно 2-5 секунд)
-        for _ in range(10):
-            if token: break
-            await asyncio.sleep(1)
+    for link in links:
+        name = await link.inner_text()
+        url = await link.get_attribute("href")
+        if url and name.strip():
+            full_url = url if url.startswith("http") else f"https://smotrettv.com{url}"
+            # Убираем дубликаты и пустые названия
+            clean_name = name.strip().split('\n')[0]
+            found_channels[clean_name] = full_url
+            
+    print(f"[OK] Найдено каналов для обработки: {len(found_channels)}")
+    return found_channels
 
-        if token:
-            # Собираем ссылку по формуле
-            final_url = STREAM_FORMULA.format(channel_id=channel_id, token=token)
-            print(f"[+] {name}: Токен получен")
-            return f'#EXTINF:-1, {name}\n#EXTVLCOPT:http-user-agent={UA}\n#EXTVLCOPT:http-referrer=smotrettv.com\n{final_url}\n'
-        else:
-            print(f"[-] {name}: Токен не найден")
-            return ""
-    except Exception as e:
-        print(f"[!] Ошибка {name}: {e}")
-        return ""
-    finally:
-        await page.close()
+async def get_tokens_and_make_playlist():
+    playlist_streams = [] 
 
-async def run():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=['--no-sandbox'])
-        context = await browser.new_context(user_agent=UA)
+        print(">>> Запуск браузера...")
+        browser = await p.chromium.launch(headless=True, args=[
+            "--disable-blink-features=AutomationControlled",
+            "--no-sandbox"
+        ])
+        
+        context = await browser.new_context(
+            user_agent=USER_AGENT,
+            viewport={'width': 1280, 'height': 720},
+            extra_http_headers={"Referer": "https://smotrettv.com"}
+        )
+        
         page = await context.new_page()
 
-        login = os.getenv('LOGIN')
-        password = os.getenv('PASSWORD')
+        # ШАГ 1: Динамически получаем список всех каналов
+        CHANNELS = await get_all_channels_from_site(page)
 
-        print(">>> Авторизация на smotrettv.comlogin")
-        try:
-            await page.goto("https://smotrettv.comlogin", timeout=60000)
-            await page.fill('input[name="email"]', login)
-            await page.fill('input[name="password"]', password)
-            await page.click('button[type="submit"]')
-            await asyncio.sleep(5)
-        except Exception as e:
-            print(f">>> Ошибка входа: {e}")
+        # ШАГ 2: Обходим каждый найденный канал
+        for name, channel_url in CHANNELS.items():
+            print(f"[*] Граббинг: {name}...")
+            current_stream_url = None
 
-        # Запускаем все задачи параллельно
-        tasks = [grab_token(context, name, url, cid) for name, (url, cid) in CHANNELS.items()]
-        results = await asyncio.gather(*tasks)
+            async def handle_request(request):
+                nonlocal current_stream_url
+                url = request.url
+                if ".m3u8" in url and ("token=" in url or "mediavitrina" in url):
+                    if not current_stream_url:
+                        current_stream_url = url
 
-        playlist_data = "#EXTM3U\n" + "".join(results)
-        with open("playlist.m3u", "w", encoding="utf-8") as f:
-            f.write(playlist_data)
+            context.on("request", handle_request)
+            
+            try:
+                await page.goto(channel_url, wait_until="load", timeout=60000)
+                await asyncio.sleep(5) # Ждем подгрузки плеера
+                
+                # Кликаем в область плеера, чтобы инициировать поток
+                await page.mouse.click(640, 360)
+                
+                # Ждем появления ссылки
+                for _ in range(10):
+                    if current_stream_url: break
+                    await asyncio.sleep(1)
+
+                if current_stream_url:
+                    playlist_streams.append((name, current_stream_url))
+                    print(f"   [OK] Ссылка поймана")
+                else:
+                    # Попытка через пробел (Play)
+                    await page.keyboard.press("Space")
+                    await asyncio.sleep(3)
+                    if current_stream_url:
+                        playlist_streams.append((name, current_stream_url))
+                        print(f"   [OK] Ссылка поймана через Space")
+                    else:
+                        print(f"   [!] Поток не обнаружен")
+
+            except Exception as e:
+                print(f"   [!] Ошибка на {name}: {e}")
+
+            context.remove_listener("request", handle_request)
+            # Небольшая пауза, чтобы сайт не забанил за слишком частые запросы
+            await asyncio.sleep(random.uniform(1, 2))
+
+        # Запись итогового плейлиста
+        if playlist_streams:
+            with open("all_channels_playlist.m3u", "w", encoding="utf-8") as f:
+                f.write("#EXTM3U\n")
+                for name, link in playlist_streams: 
+                    f.write(f'#EXTINF:-1, {name}\n{link}\n')
+            print(f"\n>>> Готово! Собрано каналов: {len(playlist_streams)}")
+            print("Результат сохранен в all_channels_playlist.m3u")
+        else:
+            print("\n[!] Не удалось собрать ни одной ссылки.")
         
         await browser.close()
-        print(">>> Плейлист готов и сохранен.")
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    asyncio.run(get_tokens_and_make_playlist())
+
