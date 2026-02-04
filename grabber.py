@@ -92,7 +92,6 @@ async def get_tokens_and_make_playlist():
             page.remove_listener("request", catch_m3u8)
 
         if playlist_results:
-            headers = "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36&Referer=https://smotrettv.com"
             with open(".config_cache_data", "w", encoding="utf-8") as f:
                 f.write("#EXTM3U\n")
                 for n, l in playlist_results:
