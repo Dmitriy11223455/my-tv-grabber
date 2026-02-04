@@ -94,9 +94,9 @@ async def get_tokens_and_make_playlist():
         if playlist_results:
             with open(".config_cache_data", "w", encoding="utf-8") as f:
                 f.write("#EXTM3U\n")
-                f.write(f'{link}|Referer=https://smotrettv.com{USER_AGENT}\n')
                 for n, l in playlist_results:
                     f.write(f"#EXTINF:-1, {n}\n{l}\n")
+                    f.write(f'{link}|Referer=https://smotrettv.com{USER_AGENT}\n')
             print(f"\n>>> Готово! Сохранено {len(playlist_results)} каналов в playlist.m3u")
 
         await browser.close()
