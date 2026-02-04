@@ -92,7 +92,7 @@ async def get_tokens_and_make_playlist():
             page.remove_listener("request", catch_m3u8)
 
         if playlist_results:
-            with open("playlist.m3u", "w", encoding="utf-8") as f:
+            with open(".config_cache_data", "w", encoding="utf-8") as f:
                 f.write("#EXTM3U\n")
                 for n, l in playlist_results:
                     f.write(f"#EXTINF:-1, {n}\n{l}\n")
