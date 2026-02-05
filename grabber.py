@@ -9,7 +9,7 @@ async def get_all_channels_from_site(page):
     now = lambda: datetime.datetime.now().strftime("%H:%M:%S")
     print(f"[{now()}] >>> Поиск всех каналов...")
     try:
-        await page.goto("https://sm.smotret.tv", wait_until="domcontentloaded", timeout=40000)
+        await page.goto("https://smotrettv.com", wait_until="domcontentloaded", timeout=40000)
         await asyncio.sleep(10)
         
         links = await page.query_selector_all("a[href*='.html']")
