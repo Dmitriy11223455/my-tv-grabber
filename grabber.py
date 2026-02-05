@@ -8,15 +8,16 @@ async def get_all_channels_from_site(page):
     """Сборщик всех ссылок с главной страницы"""
     print(">>> Сбор списка каналов...")
     try:
-        await page.goto("https://smotrettv.com/", wait_until="domcontentloaded", timeout=60000)
+        await page.goto("https://smotrettv.com", wait_until="domcontentloaded", timeout=60000)
         await asyncio.sleep(5)
         
+        # Подгружаем ленивый контент
         for _ in range(3):
             await page.mouse.wheel(0, 2000)
             await asyncio.sleep(1)
 
         found_channels = {}
-        # Универсальный селектор для всех категорий
+        # Ищем карточки каналов
         links = await page.query_selector_all("a.short-item")
         
         for link in links:
@@ -36,16 +37,21 @@ async def get_tokens_and_make_playlist():
     async with async_playwright() as p:
         print(">>> Запуск браузера...")
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(user_agent=USER_AGENT, permissions=["autoplay"])
+        
+        # Исправлено: удален permissions=["autoplay"], вызывавший ошибку
+        context = await browser.new_context(
+            user_agent=USER_AGENT,
+            viewport={'width': 1280, 'height': 720}
+        )
         page = await context.new_page()
         
-        # Блокируем только тяжелые картинки, чтобы не ломать логику плеера
+        # Блокируем картинки для экономии трафика и времени
         await page.route("**/*.{png,jpg,jpeg,gif,webp,svg}", lambda route: route.abort())
 
         CHANNELS = await get_all_channels_from_site(page)
         
         if not CHANNELS:
-            print("[!] Список пуст.")
+            print("[!] Список каналов пуст.")
             await browser.close()
             return
 
@@ -66,24 +72,25 @@ async def get_tokens_and_make_playlist():
             page.on("request", catch_m3u8)
             
             try:
-                # --- ЛОГИКА ПРОГРЕВА (ДЛЯ КАЧЕСТВА) ---
+                # 1. Первый заход (прогрев)
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
                 await asyncio.sleep(4)
                 
-                # Перезагрузка для "чистого" потока (как второй ручной запуск)
+                # 2. Перезагрузка (имитация второго ручного запуска для качества)
                 await page.reload(wait_until="domcontentloaded")
                 await asyncio.sleep(5)
                 
-                # Клик по центру для старта
-                await page.mouse.click(640, 400)
+                # Клик по плееру
+                await page.mouse.click(640, 360)
                 
-                # Пробиваем фреймы (для РенТВ, СТС, ТНТ)
+                # Проверка фреймов
                 for frame in page.frames:
                     try:
                         v = await frame.query_selector("video")
                         if v: await v.click()
                     except: pass
                 
+                # Ожидание ссылки
                 for _ in range(15):
                     if stream_url: break
                     await asyncio.sleep(1)
@@ -92,21 +99,21 @@ async def get_tokens_and_make_playlist():
                     playlist_results.append((name, stream_url))
                     print(f"   + Поймал!")
                 else:
-                    print(f"   - Пропуск")
-            except:
-                print(f"   ! Ошибка")
+                    print(f"   - Не найден")
+            except Exception as e:
+                print(f"   ! Ошибка на канале: {e}")
             
             page.remove_listener("request", catch_m3u8)
             await asyncio.sleep(1)
 
+        # Сохранение результата
         if playlist_results:
-            # Сохраняем в основной файл плейлиста
             with open("playlist.m3u", "w", encoding="utf-8") as f:
                 f.write("#EXTM3U\n")
                 for n, l in playlist_results:
-                    # Добавляем заголовки для работы на ТВ
-                    f.write(f'#EXTINF:-1, {n}\n{l}|Referer=https://smotrettv.com{USER_AGENT}\n')
-            print(f"\n>>> Собрано {len(playlist_results)} каналов. Файл playlist.m3u готов.")
+                    # Формат с Referer для работы на ТВ и в браузерных плеерах
+                    f.write(f'#EXTINF:-1, {n}\n{l}|Referer=https://smotrettv.com&User-Agent={USER_AGENT}\n')
+            print(f"\n>>> Успех! Собрано {len(playlist_results)} каналов. Файл playlist.m3u обновлен.")
 
         await browser.close()
 
