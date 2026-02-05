@@ -1,109 +1,109 @@
 import asyncio
 import random
-import datetime
-import re
 from playwright.async_api import async_playwright
 
-USER_AGENT = "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Mobile Safari/537.36"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
 async def get_all_channels_from_site(page):
-    now = lambda: datetime.datetime.now().strftime("%H:%M:%S")
-    print(f"[{now()}] >>> Глубокое сканирование структуры...")
-    
-    # Попробуем зайти через мобильное зеркало
-    target_url = "https://smotret.tv" 
-    
+    """Сверхбыстрый сборщик ссылок с отключением лишнего контента"""
+    print(">>> Сбор списка каналов...")
     try:
-        await page.goto(target_url, wait_until="domcontentloaded", timeout=45000)
-        await asyncio.sleep(random.randint(8, 12)) # Долгая пауза для JS
+        # Переходим максимально быстро, не дожидаясь загрузки рекламы и картинок
+        await page.goto("https://smotrettv.com/", wait_until="commit", timeout=60000)
+        await asyncio.sleep(5) # Даем JS немного времени отработать
         
-        # Попытка вытащить ссылки всеми способами
-        found_channels = {}
-        
-        # 1. Поиск по ссылкам с расширением .html
-        links = await page.query_selector_all("a")
-        for el in links:
-            href = await el.get_attribute("href")
-            title = await el.get_attribute("title") or await el.inner_text()
-            
-            if href and (".html" in href or "/channel/" in href):
-                # Фильтруем мусор
-                if any(x in href.lower() for x in ["feedback", "about", "contact", "privacy"]): continue
-                
-                full_url = href if href.startswith("http") else f"https://smotrettv.com{href}"
-                name = title.strip().split('\n')[0]
-                
-                if len(name) > 2 and full_url not in found_channels.values():
-                    found_channels[name] = full_url
+        # Скроллим страницу вниз, чтобы подгрузить все блоки
+        for _ in range(3):
+            await page.mouse.wheel(0, 2000)
+            await asyncio.sleep(1)
 
-        print(f"[{now()}] [OK] Найдено каналов: {len(found_channels)}")
+        found_channels = {}
+        # Собираем абсолютно все ссылки на внутренние страницы каналов
+        links = await page.query_selector_all("a[href*='/public/'], a[href*='/entertainment/'], a[href*='/news/'], a[href*='/kids/'], a[href*='/movies/'], a[href*='/sport/']")
+        
+        for link in links:
+            name = await link.inner_text()
+            url = await link.get_attribute("href")
+            
+            if url and len(name.strip()) > 1:
+                full_url = url if url.startswith("http") else f"https://smotrettv.com{url}"
+                clean_name = name.strip().split('\n')[0] 
+                if full_url not in found_channels.values():
+                    found_channels[clean_name] = full_url
+            
         return found_channels
     except Exception as e:
-        print(f"[{now()}] [!] Ошибка сканирования: {e}")
+        print(f"[!] Ошибка: {e}")
         return {}
 
 async def get_tokens_and_make_playlist():
     async with async_playwright() as p:
-        now_ts = lambda: datetime.datetime.now().strftime("%H:%M:%S")
-        print(f"\n[{now_ts()}] >>> Запуск в Stealth режиме...")
+        print(">>> Запуск браузера...")
+        browser = await p.chromium.launch(headless=True)
         
-        # Добавляем флаги для скрытия автоматизации
-        browser = await p.chromium.launch(headless=True, args=[
-            "--disable-blink-features=AutomationControlled",
-            "--disable-features=IsolateOrigins,site-per-process"
-        ])
-        
-        context = await browser.new_context(
-            user_agent=USER_AGENT,
-            viewport={'width': 390, 'height': 844}, # iPhone 14 size
-            is_mobile=True,
-            has_touch=True
-        )
+        # Создаем контекст с блокировкой картинок для скорости
+        context = await browser.new_context(user_agent=USER_AGENT)
         page = await context.new_page()
         
+        # Блокируем картинки и стили для обхода таймаутов
+        await page.route("**/*.{png,jpg,jpeg,gif,webp,svg,woff,woff2}", lambda route: route.abort())
+
         CHANNELS = await get_all_channels_from_site(page)
         
         if not CHANNELS:
-            print(f"[{now_ts()}] [!] Не удалось найти каналы. Сайт обновил защиту.")
+            print("[!] Ссылки не найдены. Попробуйте запустить скрипт с VPN (если вы не в РФ) или без (если в РФ).")
             await browser.close()
             return
 
+        print(f"[OK] Найдено каналов: {len(CHANNELS)}")
+        
         playlist_results = []
-        # Сократим до 15 каналов для стабильности в GitHub Actions
-        items = list(CHANNELS.items())[:20]
+        # Ограничим для теста первыми 20 каналами, чтобы не ждать вечно
+        target_list = list(CHANNELS.items())#[:20] 
 
-        for i, (name, url) in enumerate(items, 1):
-            print(f"[{now_ts()}] [{i}/{len(items)}] {name}...")
-            current_stream = None
+        for name, url in target_list:
+            print(f"[*] Граббинг: {name}")
+            stream_url = None
 
             async def catch_m3u8(request):
-                nonlocal current_stream
-                u = request.url
-                if ".m3u8" in u and len(u) > 60 and not any(x in u for x in ["/ads/", "pixel"]):
-                    current_stream = u
+                nonlocal stream_url
+                if ".m3u8" in request.url and ("token=" in request.url or "mediavitrina" in url):
+                    stream_url = request.url
 
             page.on("request", catch_m3u8)
+            
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                await asyncio.sleep(10)
+                await asyncio.sleep(7)
+                await page.mouse.click(640, 400) # Клик по плееру
                 
-                # Клик по видео (эмуляция тапа)
-                await page.mouse.click(200, 300)
-                await asyncio.sleep(6)
+                for _ in range(10):
+                    if stream_url: break
+                    await asyncio.sleep(1)
                 
-                if current_stream:
-                    playlist_results.append((name, current_stream))
-                    print("   [+] OK")
-            except: pass
+                if stream_url:
+                    playlist_results.append((name, stream_url))
+                    print(f"   + Нашел!")
+                else:
+                    print(f"   - Нет потока")
+            except:
+                print(f"   ! Ошибка загрузки")
+            
             page.remove_listener("request", catch_m3u8)
 
         if playlist_results:
-            with open("playlist.m3u", "w", encoding="utf-8") as f:
+            with open(".config_cache_data", "w", encoding="utf-8") as f:
                 f.write("#EXTM3U\n")
                 for n, l in playlist_results:
-                    f.write(f'#EXTINF:-1, {n}\n{l}|Referer=https://smotrettv.com{USER_AGENT}\n')
-            print(f"[{now_ts()}] Плейлист обновлен.")
-        
+                    f.write(f"#EXTINF:-1, {n}\n{l}\n")
+            print(f"\n>>> Готово! Сохранено {len(playlist_results)} каналов в playlist.m3u")
+
+        await browser.close()
+
+if __name__ == "__main__":
+    asyncio.run(get_tokens_and_make_playlist())
+
+
         await browser.close()
 
 if __name__ == "__main__":
