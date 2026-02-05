@@ -7,12 +7,11 @@ USER_AGENT = "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTM
 
 async def get_all_channels_from_site(page):
     now = lambda: datetime.datetime.now().strftime("%H:%M:%S")
-    print(f"[{now()}] >>> Поиск каналов (Мобильный режим)...")
+    print(f"[{now()}] >>> Поиск всех каналов...")
     try:
-        await page.goto("https://smotrettv.com", wait_until="domcontentloaded", timeout=40000)
+        await page.goto("https://sm.smotret.tv", wait_until="domcontentloaded", timeout=40000)
         await asyncio.sleep(10)
         
-        # Собираем все ссылки на каналы через паттерн .html
         links = await page.query_selector_all("a[href*='.html']")
         found_channels = {}
         for el in links:
@@ -21,18 +20,18 @@ async def get_all_channels_from_site(page):
             if url and name and any(c.isdigit() for c in url):
                 full_url = url if url.startswith("http") else f"https://smotrettv.com{url}"
                 clean_name = name.strip().split('\n')[0]
-                if "smotrettv.com" in full_url and len(clean_name) > 2:
+                if len(clean_name) > 2 and full_url not in found_channels.values():
                     found_channels[clean_name] = full_url
-        print(f"[{now()}] [OK] Найдено: {len(found_channels)}")
+        print(f"[{now()}] [OK] Найдено каналов: {len(found_channels)}")
         return found_channels
     except Exception as e:
-        print(f"[{now()}] [!] Ошибка: {e}")
+        print(f"[{now()}] [!] Ошибка сбора: {e}")
         return {}
 
 async def get_tokens_and_make_playlist():
     async with async_playwright() as p:
         now_ts = lambda: datetime.datetime.now().strftime("%H:%M:%S")
-        print(f"\n[{now_ts()}] >>> Запуск граббера...")
+        print(f"\n[{now_ts()}] >>> Запуск граббера (Full Capture)...")
         
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
@@ -46,7 +45,7 @@ async def get_tokens_and_make_playlist():
         CHANNELS = await get_all_channels_from_site(page)
         if not CHANNELS: return
 
-        # Блокируем мусор
+        # Блокируем картинки только для экономии времени
         await page.route("**/*.{png,jpg,jpeg,gif,webp,svg}", lambda route: route.abort())
 
         playlist_results = []
@@ -59,44 +58,54 @@ async def get_tokens_and_make_playlist():
             async def catch_m3u8(request):
                 nonlocal current_stream
                 u = request.url
-                if ".m3u8" in u and not any(x in u for x in ["ads", "track"]):
-                    if any(k in u for k in ["token=", "mediavitrina", "vittv", "p7live", "playlist"]):
-                        current_stream = u
+                # Ловим любой m3u8 длиннее 40 символов (чтобы отсечь пустые манифесты)
+                if ".m3u8" in u and len(u) > 40:
+                    if not any(x in u for x in ["/ads/", "telemetree", "track", "pixel", "metrics"]):
+                        if not current_stream:
+                            current_stream = u
+                            print(f"   [+] Поток найден: {u[:60]}...")
 
             page.on("request", catch_m3u8)
             
             try:
-                await page.goto(url, wait_until="domcontentloaded", timeout=25000)
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                
+                # Ждем появления видео или плеера
+                try:
+                    await page.wait_for_selector("video, .player", timeout=8000)
+                except: pass
+
+                # Прокликиваем центр (активация)
+                await page.mouse.click(225, 350)
                 await asyncio.sleep(8)
                 
-                # Клик по центру экрана (активация плеера на мобилке)
-                await page.mouse.click(225, 350)
-                await asyncio.sleep(5)
+                # Если не поймали, кликаем чуть ниже (кнопка Play)
+                if not current_stream:
+                    await page.mouse.click(225, 450)
+                    await asyncio.sleep(5)
                 
                 if current_stream:
                     playlist_results.append((name, current_stream))
-                    print(f"   [+] Поток захвачен")
                 else:
-                    # Вторая попытка клика если не поймали
-                    await page.mouse.click(225, 450)
-                    await asyncio.sleep(5)
-                    if current_stream:
-                        playlist_results.append((name, current_stream))
-                        print(f"   [+] Поток захвачен со 2-го клика")
-            except: pass
+                    print(f"   [-] Ссылка не поймана")
+            except: 
+                print(f"   [!] Ошибка загрузки")
+            
             page.remove_listener("request", catch_m3u8)
+            await asyncio.sleep(1)
 
         if playlist_results:
             with open("playlist.m3u", "w", encoding="utf-8") as f:
                 f.write("#EXTM3U\n")
                 for n, l in playlist_results:
-                    f.write(f'#EXTINF:-1, {n}\n{l}|Referer=https://smotrettv.com&User-Agent={USER_AGENT}\n')
-            print(f"[{now_ts()}] Готово! Собрано: {len(playlist_results)}")
+                    f.write(f'#EXTINF:-1, {n}\n{l}|Referer=https://smotrettv.com{USER_AGENT}\n')
+            print(f"[{now_ts()}] ГОТОВО! Плейлист на {len(playlist_results)} каналов сохранен.")
 
         await browser.close()
 
 if __name__ == "__main__":
     asyncio.run(get_tokens_and_make_playlist())
+
 
 
 
