@@ -1,23 +1,27 @@
 #EXTM3U
 #EXTINF:-1, Россия 1
-https://edge01d.mediavitrina.ru/hls-livef1/russia1/tracks-v4a1/mono.m3u8?token=v2.5BbtVxpP6DWQVuQ_0E23cz68b-7JYua5NqhHcajl_7g.18U2ZgIfHIqkHyZ0eYLhpUqYovTZRI-PU7YFnHEmbqo.1770876151.f6266bc9959888c748c7e3df61af16d4
+https://edge02r.mediavitrina.ru/hls-livef1/russia1/tracks-v4a1/mono.m3u8?token=v2.RXr_lDpCJDkio4cjIkW8KL90NNLbW7RLLKIiEkEj33o.daZSwzxOofqJNzlpTNk74DxBhFXv7cLmlyZQkM2qWlY.1770909275.f80242e928feb80fca7078c61bcd909f
 #EXTINF:-1, Первый канал
-https://edge02r.mediavitrina.ru/hls-livef1/1tv/tracks-v4a1/mono.m3u8?token=v2.r1FfyGmbLg630vIit3-HqOKVD-U1yn0-157kUppbgEM.QJFnJyJaZan_PZeqNJhsoxD_mhNqbuk6PHEyi-sWG3Q.1770876159.ceca1cf2c69d46665753263da59e7d18
+https://edge02r.mediavitrina.ru/hls-livef1/1tv/tracks-v4a1/mono.m3u8?token=v2.vy9_VtrCL9nB41AiAIPY0sGGayJCczg3N2m5EHUyhFo.cF3OVs0PBTNtu2W-nUumilnXy8xVPS__-5ZcARX-S9g.1770909282.552f9395da614b61f4ba75bfd90873e1
 #EXTINF:-1, НТВ
-https://edge02r.mediavitrina.ru/hls-livef1/ntv0h/tracks-v4a1/mono.m3u8?token=v2.Tg6xKv2t0kmUtgg9FLVRqwioFxouPqtLKDazR0Ve6hs.pcEwn3QdUQy-c9vX8pSzGytPk_AjrZoWWXId-4Uzl_E.1770876167.5459bbeb05f37ea3fea34b54f8f57db3
+https://edge02r.mediavitrina.ru/hls-livef1/1tv/tracks-v4a1/mono.m3u8?token=v2.vy9_VtrCL9nB41AiAIPY0sGGayJCczg3N2m5EHUyhFo.cF3OVs0PBTNtu2W-nUumilnXy8xVPS__-5ZcARX-S9g.1770909282.552f9395da614b61f4ba75bfd90873e1
 #EXTINF:-1, Рен ТВ
-https://edge02r.mediavitrina.ru/hls-livef1/ren-tv/tracks-v4a1/mono.m3u8?token=v2.3As2QhkNKS8UGojnCALy_MD2uJNDCtjsmN172HtqAak.QEwN_ekDIQJHUaK3Tzhwxl1XFRopKlVfdNUVkSu1zqI.1770876176.a88e2df282189e0dc9734256f666ce05
+https://edge02d.mediavitrina.ru/hls-livef1/ren-tv/tracks-v4a1/mono.m3u8?token=v2.OBmWtnoKZyGRc_Y9OMS_4MT67LLopxtVWYeSbNTM4s4.7n-tNccahLeOfvR23H8e9VmMan6c0QtkR0ZtYzhjB8E.1770909299.0577977373fa5148b7d727eb256dc154
 #EXTINF:-1, Пятый канал
-https://edge02d.mediavitrina.ru/hls-livef7/5tv/tracks-v4a1/mono.m3u8?token=v2.iveuGX_REA8P2vYf9TAzRVesxz3pSpk7BA9ZYrqVxss.62F1VKprzJzhUZIRUDR3svGjBMpHykHqsCGZZ_oZXeA.1770876202.dda909e095bf589a7cf7070ed85de103
+https://edge01d.mediavitrina.ru/hls-livef7/5tv/tracks-v4a1/mono.m3u8?token=v2.dJB-e-LZTLE9lOlvD3eMjCisL7fo23yifQS9jD-lNFo.DxrsquUzEKh6HIBIRd0Ja7_At9Jr-2-YZNa4BA3a4Mc.1770909325.1138bfc3bc942afa8716e5c6f2feb062
 #EXTINF:-1, ТНТ
-https://edge01r.mediavitrina.ru/hls-livef8/tnt/tracks-v4a1/mono.m3u8?token=v2.kKBYdm0Ml-a_pjTrDUgPNf1Hgwc4K5CjT6dg06v7X4U.s5pYGlqHtMMv9Pkz6cNFOD18XlygdRwwNlEUQo-3oQQ.1770876210.a936720ada7c296556b41f1a3bbd01cb
+https://edge02d.mediavitrina.ru/hls-livef8/tnt/tracks-v4a1/mono.m3u8?token=v2.BGFes87clSW9aMwdopQTpWz015pSwlKyUvF6v3u3QgE._yAOzZtRxln-kl_xJkUPmu5LPhJmOIC1drtT5Us97IA.1770909334.716d0adcfd862d95634a0e4ce1b07644
 #EXTINF:-1, ТВ Центр
-https://edge01r.mediavitrina.ru/hls-livef8/tnt/tracks-v4a1/mono.m3u8?token=v2.kKBYdm0Ml-a_pjTrDUgPNf1Hgwc4K5CjT6dg06v7X4U.s5pYGlqHtMMv9Pkz6cNFOD18XlygdRwwNlEUQo-3oQQ.1770876210.a936720ada7c296556b41f1a3bbd01cb
+https://edge02d.mediavitrina.ru/hls-livef1/tvc/tracks-v4a1/mono.m3u8?token=v2.BCpjG8MltKSqKR7ItMRy26JhvIvCiIO8jt5PzmyzfnY.BrmAC4aJYC1jsR2ZD0ZKexMm8I2wRptMpAanPGWEKKI.1770909342.c620bd9aac0f7acad8ddc4ec94aac2bd
 #EXTINF:-1, Звезда
-https://edge01d.mediavitrina.ru/hls-livef8/zvezda0/tracks-v4a1/mono.m3u8?token=v2.wAtM7A_oHe2j1VhNOJprHXdvUX0EKnYlwpYqcw2Wuf4.cL9jZgVi5n1NmYkZjRlzUksDAMu4Bq2TMUOHq0Lw1KA.1770876244.adb6ae374342f60a039bc8f47c5a562e
+https://edge02r.mediavitrina.ru/hls-livef8/zvezda0/tracks-v4a1/mono.m3u8?token=v2.MBcLa6Q3GUBW4HY-G7FpMSi6_iLJY1Xg1Ia3RrfnDMg.I4w5XbhxJYRGuKzo4rh2JxsQqX9KMzgx2hY3xyeVLqg.1770909369.bdf40a99459da130defdce08a05ca930
+#EXTINF:-1, Comedy Central
+https://edge02r.mediavitrina.ru/hls-livef8/zvezda0/tracks-v4a1/mono.m3u8?token=v2.MBcLa6Q3GUBW4HY-G7FpMSi6_iLJY1Xg1Ia3RrfnDMg.I4w5XbhxJYRGuKzo4rh2JxsQqX9KMzgx2hY3xyeVLqg.1770909369.bdf40a99459da130defdce08a05ca930
 #EXTINF:-1, Домашний
-https://edge01r.mediavitrina.ru/hls-livef1/ctc-dom/tracks-v4a1/mono.m3u8?token=v2.nt_j5STpqeNhYdJmnzlklltuMfcx5H2fpobWBc39OHg.IgRlMhklWLRMf1SaTimZWXujL2UTruLVPtZnxJGcH2w.1770876288.a41ced77e3f701e5e00eaf3b783fb0e7
+https://edge01r.mediavitrina.ru/hls-livef1/ctc-dom/tracks-v4a1/mono.m3u8?token=v2.oUJ6BItaTgayMGatrLE4vuPsG_hr1guFnBi3PCrHTt0.D6tzGnQ7C6Pv-KEuA8zWVZ48Y0pabuSxeoBHKanOLAs.1770909403.a5b8fe080968dddd1f6c7a0998c81bbb
 #EXTINF:-1, Пятница
-https://edge01r.mediavitrina.ru/hls-livef8/friday/tracks-v4a1/mono.m3u8?token=v2.yhis6lVNETU0oKxK3HTGMTwWGKm74Ya7d-FPmBFBGhM.pZ2NwOAKmPr7xeLgtes0SFgK3OwxYq3UDkOWBYhM8ZU.1770876313.fb65e6f34ea76cd3005bfe1b0773b801
+https://edge01d.mediavitrina.ru/hls-livef8/friday/tracks-v4a1/mono.m3u8?token=v2.llyPouRj7BYlaow7-pTj74pew8Gnv_5XJ8GPOkXHPEU.VOEiEGTI0VSLqC7cxljlO_bcSs3DdwL3EFHlKgcgVzE.1770909429.7428d5c0540442b6d0e33ad9df9976bb
+#EXTINF:-1, Москва Доверие
+https://edge01d.mediavitrina.ru/hls-livef8/friday/tracks-v4a1/mono.m3u8?token=v2.llyPouRj7BYlaow7-pTj74pew8Gnv_5XJ8GPOkXHPEU.VOEiEGTI0VSLqC7cxljlO_bcSs3DdwL3EFHlKgcgVzE.1770909429.7428d5c0540442b6d0e33ad9df9976bb
 #EXTINF:-1, QazSport
-https://server.musical.uz/qazsport/tracks-v1a1/mono.m3u8?remote=48.214.54.96&token=84af36b71783b77ee48f4ca3a05876146ed17242-aab5efff41b370e1f73265ff3c464521-1770282074-1770271274
+https://server.musical.uz/tv/qazsport/index.m3u8?token=09d20ea5b6b0cc16661cd7a8900cd3413940d678-27a4a06fd4cb16c4fd44543be713f2ff-1770315181-1770304381&remote=172.215.210.58
