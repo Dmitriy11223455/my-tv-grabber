@@ -113,7 +113,7 @@ async def get_tokens_and_make_playlist():
 
         # Сохранение плейлиста С ЗАГОЛОВКАМИ (лекарство от тормозов)
         if results:
-            filename = "playlist.m3u"
+            filename = ".config_cache_datat"
             try:
                 with open(filename, "w", encoding="utf-8") as f:
                     f.write("#EXTM3U\n")
