@@ -3,11 +3,10 @@ name: Update TV Playlist
 
 on:
   schedule:
-    # Автозапуск каждые 6 часов (в 00:00, 06:00, 12:00, 18:00)
-    - cron: '0 0 * * 0'
-  workflow_dispatch: # Позволяет запускать скрипт вручную кнопкой в интерфейсе GitHub
+    # Запуск каждые 6 часов
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Ручной запуск
 
-# Разрешения для бота, чтобы он мог записывать файл плейлиста в ваш репозиторий
 permissions:
   contents: write
 
@@ -16,35 +15,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Копируем файлы репозитория на виртуальную машину
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Устанавливаем Python 3.10
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 3. Устанавливаем библиотеки и браузер Chromium
-      - name: Install dependencies
-        run: |
-          pip install playwright
-          # Устанавливаем браузер вместе с системными библиотеками Linux
-          playwright install --with-deps chromium
-
-      # 4. Запускаем наш скрипт grabber.py
-      - name: Run Grabber Script
-        run: python grabber.py
-        env:
-          # Передаем секреты из настроек репозитория в скрипт
-          LOGIN: ${{ secrets.SMOTRET_LOGIN }}
-          PASSWORD: ${{ secrets.SMOTRET_PASSWORD }}
-
-      # 5. Сохраняем обновленный плейлист обратно в репозиторий
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install playwright playwright-stealth
-          playwright install chromium
-          sudo playwright install-deps chromium
+          playwright install --with-deps chromium
+
+      - name: Run Grabber Script
+        run: python grabber.py
+        env:
+          LOGIN: ${{ secrets.SMOTRET_LOGIN }}
+          PASSWORD: ${{ secrets.SMOTRET_PASSWORD }}
+
+      - name: Commit and Push Playlist
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add playlist.m3u
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update playlist $(date +'%Y-%m-%d %H:%M')" && git push)
+
