@@ -9,12 +9,10 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 async def get_all_channels_from_site(page):
     print(">>> [1/3] Поиск списка каналов...", flush=True)
     try:
-        # Заходим на главную
-        await page.goto("https://smotrettv.com", wait_until="domcontentloaded", timeout=60000)
+        await page.goto("https://smotrettv.com", wait_until="networkidle", timeout=60000)
         await asyncio.sleep(5)
         
         found_channels = {}
-        # Собираем ссылки на каналы
         links = await page.query_selector_all("a")
         for link in links:
             try:
@@ -22,7 +20,6 @@ async def get_all_channels_from_site(page):
                 name = await link.inner_text()
                 if url and name:
                     clean_name = name.strip().split('\n')[0].upper()
-                    # Фильтр разделов
                     if len(clean_name) > 1 and any(x in url for x in ['/public/', '/news/', '/sport/', '/entertainment/']):
                         full_url = url if url.startswith("http") else f"https://smotrettv.com{url}"
                         if clean_name not in found_channels:
@@ -37,16 +34,31 @@ async def get_all_channels_from_site(page):
 
 async def get_tokens_and_make_playlist():
     async with async_playwright() as p:
-        print(">>> [2/3] Инициализация браузера...", flush=True)
-        # Запуск с флагами для обхода детектирования автоматизации
-        browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-blink-features=AutomationControlled'])
+        print(">>> [2/3] Инициализация браузера (Stealth Mode)...", flush=True)
         
-        # 1. Получаем список каналов
-        init_ctx = await browser.new_context(user_agent=USER_AGENT)
-        temp_page = await init_ctx.new_page()
+        # Запуск с маскировкой под обычного пользователя
+        browser = await p.chromium.launch(headless=True, args=[
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled'
+        ])
         
+        # Общий контекст с подменой признаков бота
+        context = await browser.new_context(
+            user_agent=USER_AGENT,
+            viewport={'width': 1920, 'height': 1080}
+        )
+        
+        # Скрипт для скрытия автоматизации (важно для "FAIL")
+        await context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            window.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'languages', {get: () => ['ru-RU', 'ru', 'en-US']});
+        """)
+
+        temp_page = await context.new_page()
         CHANNELS = await get_all_channels_from_site(temp_page)
-        await init_ctx.close()
+        await temp_page.close()
 
         if not CHANNELS:
             await browser.close()
@@ -55,39 +67,34 @@ async def get_tokens_and_make_playlist():
         print(f"\n>>> [3/3] Сбор прямых ссылок...", flush=True)
         results = []
         
-        # Обрабатываем первые 20 каналов
         channel_list = list(CHANNELS.items())[:20]
         
         for name, url in channel_list:
-            # Создаем контекст для каждого канала
-            ch_ctx = await browser.new_context(
-                user_agent=USER_AGENT,
-                viewport={'width': 1280, 'height': 720}
-            )
-            ch_page = await ch_ctx.new_page()
-            
+            ch_page = await context.new_page()
             stream_data = {"url": None}
 
             async def handle_request(request):
                 u = request.url
-                # Ловим m3u8, исключая рекламу и статику
-                if ".m3u8" in u and not any(x in u for x in ["ads", "log", "stat", "yandex", "metrika", "telemetry"]):
-                    # Приоритет ссылкам с токеном или мастер-плейлистам
-                    if any(k in u for k in ["token", "master", "playlist.m3u8", "index-v1"]):
+                # Ловим основной поток .m3u8
+                if ".m3u8" in u and not any(x in u for x in ["ads", "log", "stat", "yandex", "metrika"]):
+                    if any(k in u for k in ["token", "master", "playlist", "index"]):
                         stream_data["url"] = u
 
             ch_page.on("request", handle_request)
             print(f"[*] {name:.<25}", end=" ", flush=True)
 
             try:
+                # Переходим на страницу канала
                 await ch_page.goto(url, wait_until="domcontentloaded", timeout=45000)
-                await asyncio.sleep(5)
                 
-                # Клик по плееру для запуска трансляции
+                # Ждем прогрузки плеера
+                await asyncio.sleep(8)
+                
+                # Эмуляция клика в центр плеера для запуска
                 await ch_page.mouse.click(640, 360)
                 
-                # Ждем появления ссылки (до 15 секунд)
-                for _ in range(15):
+                # Цикл ожидания ссылки
+                for _ in range(12):
                     if stream_data["url"]: break
                     await asyncio.sleep(1)
 
@@ -99,27 +106,28 @@ async def get_tokens_and_make_playlist():
             except:
                 print("ERR", flush=True)
             finally:
-                await ch_ctx.close()
+                await ch_page.close()
 
-        # Сохранение плейлиста
+        # Сохранение плейлиста с параметрами против буферизации
         if results:
             filename = "playlist.m3u"
             try:
                 with open(filename, "w", encoding="utf-8") as f:
                     f.write("#EXTM3U\n")
-                    f.write(f"# Сгенерировано: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
+                    f.write(f"# Обновлено: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
                     for n, l in results:
-                        # Добавляем Referer и UA прямо в строку ссылки (поддерживается большинством IPTV плееров)
+                        # Добавляем Referer и UA прямо в ссылку для плеера
                         f.write(f'#EXTINF:-1, {n}\n')
                         f.write(f'{l}|Referer=https://smotrettv.com{USER_AGENT}\n\n')
-                print(f"\n>>> ГОТОВО! Файл {filename} создан. Найдено: {len(results)}")
+                print(f"\n>>> ГОТОВО! Создан {filename}. Найдено: {len(results)}")
             except Exception as e:
-                print(f"\n[!] Ошибка при записи файла: {e}")
+                print(f"\n[!] Ошибка записи: {e}")
 
         await browser.close()
 
 if __name__ == "__main__":
     asyncio.run(get_tokens_and_make_playlist())
+
 
 
 
