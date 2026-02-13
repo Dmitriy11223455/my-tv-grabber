@@ -5,15 +5,14 @@ import os
 import random
 from playwright.async_api import async_playwright
 
-# Используем актуальный User-Agent Chrome
+# Актуальный User-Agent
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 async def get_all_channels_from_site(page):
     print(">>> [1/3] Поиск списка каналов...", flush=True)
     try:
-        # Переход на главную (ждем только начала загрузки, чтобы не виснуть на рекламе)
-        await page.goto("https://smotrettv.com", wait_until="commit", timeout=60000)
-        await asyncio.sleep(10)
+        await page.goto("https://smotrettv.com", wait_until="domcontentloaded", timeout=60000)
+        await asyncio.sleep(5)
         
         found_channels = {}
         links = await page.query_selector_all("a")
@@ -23,7 +22,6 @@ async def get_all_channels_from_site(page):
                 name = await link.inner_text()
                 if url and name:
                     clean_name = name.strip().split('\n')[0].upper()
-                    # Фильтр разделов с ТВ-каналами
                     if len(clean_name) > 1 and any(x in url for x in ['/public/', '/news/', '/sport/', '/entertainment/']):
                         full_url = url if url.startswith("http") else f"https://smotrettv.com{url}"
                         if clean_name not in found_channels:
@@ -38,12 +36,10 @@ async def get_all_channels_from_site(page):
 
 async def get_tokens_and_make_playlist():
     async with async_playwright() as p:
-        print(">>> [2/3] Инициализация браузера (Stealth Mode)...", flush=True)
+        print(">>> [2/3] Запуск браузера...", flush=True)
         
-        # Запуск с маскировкой под обычного пользователя
         browser = await p.chromium.launch(headless=True, args=[
             '--no-sandbox', 
-            '--disable-setuid-sandbox',
             '--disable-blink-features=AutomationControlled'
         ])
         
@@ -53,7 +49,7 @@ async def get_tokens_and_make_playlist():
             locale="ru-RU"
         )
         
-        # Скрываем признаки Playwright (защита от FAIL)
+        # Скрытие автоматизации
         await context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
         temp_page = await context.new_page()
@@ -64,73 +60,72 @@ async def get_tokens_and_make_playlist():
             await browser.close()
             return
 
-        print(f"\n>>> [3/3] Сбор ссылок (лечение буферизации)...", flush=True)
+        print(f"\n>>> [3/3] Сбор ссылок (фикс буферизации для Россия 1/НТВ)...", flush=True)
         results = []
         
-        # Обрабатываем первые 20 каналов
-        for name, url in list(CHANNELS.items())[:20]:
+        # Обрабатываем каналы
+        all_items = list(CHANNELS.items())[:20]
+        for name, url in all_items:
             ch_page = await context.new_page()
-            stream_data = {"url": None}
+            # Список для сбора всех найденных m3u8 (чтобы взять последнюю/лучшую)
+            captured_urls = []
 
             async def handle_request(request):
                 u = request.url
-                # Ловим m3u8 с токенами, игнорируя мусор
                 if ".m3u8" in u and not any(x in u for x in ["ads", "log", "stat", "yandex", "metrika"]):
                     if any(k in u for k in ["token", "master", "index", "playlist", "chunklist"]):
-                        stream_data["url"] = u
+                        captured_urls.append(u)
 
             ch_page.on("request", handle_request)
             print(f"[*] {name:.<25}", end=" ", flush=True)
 
             try:
-                # Загружаем страницу канала
                 await ch_page.goto(url, wait_until="domcontentloaded", timeout=45000)
-                await asyncio.sleep(random.uniform(7, 10))
                 
-                # Эмуляция активности (движение и клик для запуска плеера)
-                await ch_page.mouse.move(640, 360, steps=10)
-                await ch_page.mouse.wheel(0, 300)
-                await asyncio.sleep(2)
-                await ch_page.mouse.click(640, 360)
+                # Ждем прогрузки плеера (Россия 1 и НТВ требуют больше времени)
+                await asyncio.sleep(random.uniform(8, 12))
+                
+                # Клик для активации (имитируем живого юзера)
+                try:
+                    await ch_page.mouse.click(640, 360)
+                except: pass
 
-                # Ожидание ссылки до 15 сек
-                for _ in range(15):
-                    if stream_data["url"]: break
+                # Ждем появления ссылки
+                for _ in range(10):
+                    if captured_urls: break
                     await asyncio.sleep(1)
 
-                if stream_data["url"]:
-                    results.append((name, stream_data["url"]))
+                if captured_urls:
+                    # ВАЖНО: Берем ПОСЛЕДНЮЮ ссылку (она обычно основная после рекламы)
+                    final_link = captured_urls[-1]
+                    results.append((name, final_link))
                     print("OK", flush=True)
                 else:
-                    # Скриншот для отладки геоблока или капчи
-                    safe_n = name.replace(" ", "_").replace("/", "_")
-                    await ch_page.screenshot(path=f"fail_{safe_n}.png")
-                    print("FAIL (📷 saved)", flush=True)
+                    print("FAIL", flush=True)
             except:
                 print("ERR", flush=True)
             finally:
                 await ch_page.close()
 
-        # Сохранение плейлиста С ЗАГОЛОВКАМИ (лекарство от тормозов)
+        # Сохранение плейлиста
         if results:
             filename = "playlist.m3u"
-            try:
-                with open(filename, "w", encoding="utf-8") as f:
-                    f.write("#EXTM3U\n")
-                    f.write(f"# Сгенерировано: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
-                    for n, l in results:
-                        # Добавляем Referer и User-Agent к ссылке через "|"
-                        # Это заставляет плеер имитировать браузер и снимает лимит скорости
-                        f.write(f'#EXTINF:-1, {n}\n')
-                        f.write(f'{l}|Referer=https://smotrettv.com{USER_AGENT}\n\n')
-                print(f"\n>>> ГОТОВО! Плейлист {filename} создан. Найдено: {len(results)}")
-            except Exception as e:
-                print(f"\n[!] Ошибка записи: {e}")
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write("#EXTM3U\n")
+                f.write(f"# Сгенерировано: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
+                for n, l in results:
+                    f.write(f'#EXTINF:-1, {n}\n')
+                    # Формат с пайпом "|" и заголовками для снятия лимитов скорости
+                    f.write(f'{l}|Referer=https://smotrettv.com{USER_AGENT}\n\n')
+            
+            print(f"\n>>> ГОТОВО! Файл {filename} обновлен.")
+            print(f">>> Найдено: {len(results)} каналов.")
 
         await browser.close()
 
 if __name__ == "__main__":
     asyncio.run(get_tokens_and_make_playlist())
+
 
 
 
