@@ -140,7 +140,7 @@ async def get_tokens_and_make_playlist():
 
         await browser.close()
 
-if name == "main":
+if __name__ == "__main__":
     asyncio.run(get_tokens_and_make_playlist())
 
 
