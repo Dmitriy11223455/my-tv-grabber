@@ -81,8 +81,8 @@ async def get_tokens_and_make_playlist():
         print(f"\n>>> [3/3] Сбор ссылок (Лимит: 70)...", flush=True)
         results = []
         
-        # Обрабатываем первые 70 каналов
-        for name, url in list(MY_CHANNELS.items())[:70]:
+        # Обрабатываем первые 300 каналов
+        for name, url in list(MY_CHANNELS.items())[:300]:
             ch_page = await context.new_page()
             captured_urls = []
 
