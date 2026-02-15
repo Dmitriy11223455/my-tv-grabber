@@ -17,7 +17,7 @@ async def scroll_page(page):
 async def get_all_channels_from_site(page):
     print(">>> [1/3] Поиск списка каналов и радио (со скроллом)...", flush=True)
     try:
-        await page.goto("https://smotrettv.com", wait_until="commit", timeout=60000)
+        await page.goto("https://smotrettv.com/tv/", wait_until="commit", timeout=60000)
         await asyncio.sleep(5)
         await scroll_page(page)
         
