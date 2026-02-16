@@ -15,16 +15,16 @@ async def scroll_page(page):
 
 async def get_all_channels_from_site(page):
     print(">>> [1/2] Глубокий обход всех разделов ТВ...", flush=True)
-    sections = ["https://smotrettv.com/tv/",
-                "https://smotrettv.com/tv/page/2/",
-                "https://smotrettv.com/tv/page/3/",
-                "https://smotrettv.com/tv/page/4/",
-                "https://smotrettv.com/tv/page/5/",
-                "https://smotrettv.com/tv/page/6/",
-                "https://smotrettv.com/tv/page/7/",
-                "https://smotrettv.com/tv/page/8/",
-                "https://smotrettv.com/tv/page/9/",
-                "https://smotrettv.com/tv/page/10/" 
+    sections = ["https://smotrettv.com/top.html",
+                #"https://smotrettv.com/tv/page/2/",
+                #"https://smotrettv.com/tv/page/3/",
+                #"https://smotrettv.com/tv/page/4/",
+                #"https://smotrettv.com/tv/page/5/",
+                #"https://smotrettv.com/tv/page/6/",
+                #"https://smotrettv.com/tv/page/7/",
+                #"https://smotrettv.com/tv/page/8/",
+                #"https://smotrettv.com/tv/page/9/",
+                #"https://smotrettv.com/tv/page/10/" 
     ]
     
     found = {}
