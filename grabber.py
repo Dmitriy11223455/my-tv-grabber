@@ -58,8 +58,8 @@ async def get_tokens_and_make_playlist():
             user_agent=USER_AGENT, 
             viewport={'width': 1280, 'height': 720},
             extra_http_headers={
-                "X-Forwarded-For": 195.62.37.202,
-                "X-Real-IP": 195.62.37.202
+                "X-Forwarded-For": "195.62.37.202",
+                "X-Real-IP": "195.62.37.202"
             }
         )
         
