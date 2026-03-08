@@ -3,7 +3,6 @@ name: Update TV Playlist
 
 on:
   schedule:
-    # Запуск каждые 6 часов
     - cron: '26 6 */7 * *'
   workflow_dispatch: # Ручной запуск
 
